@@ -4,7 +4,9 @@ const ejs = require("ejs");
 const mongoose = require("mongoose");
 // const encrypt = require('mongoose-encryption');
 require('dotenv').config();
-const md5 = require('md5');
+// const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -56,34 +58,38 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
-app.post("/register", (req, res) => {
-  const newUser = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-
-  newUser.save()
-  .then(() => {
-    console.log('User saved to DB');
+app.post("/register", async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+    const newUser = new User({
+      email: req.body.username,
+      password: hashedPassword
+    });
+    await newUser.save();
+    console.log("User saved to DB");
     res.render("secrets");
-  })
-  .catch((err) => {
+  } catch (err) {
     console.log(err);
-  })
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 app.post('/login', async (req, res) => {
   try {
-    // const { username, password } = req.body;
     const username = req.body.username;
-    const password = md5(req.body.password);
-    const foundUser = await User.find({ email: username }).exec();
-    if (foundUser.some(user => user.password === password)) {
-      res.render('secrets');
+    const password = req.body.password;
+    const foundUser = await User.findOne({ email: username }).exec();
+    if (foundUser) {
+      const passwordMatch = bcrypt.compare(password, foundUser.password);
+      if (passwordMatch) {
+        res.render('secrets');
+      } else {
+        res.status(401).send('Incorrect username or password.');
+      }
     } else {
-      res.status(401).send('Incorrect username or password');
+      res.status(401).send('Incorrect username or password.');
     }
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     res.status(500).send('Internal Server Error');
   }
