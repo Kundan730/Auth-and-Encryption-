@@ -43,8 +43,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Connect to the MongoDB server and log success or error
+
+const password = process.env.PASS;
+
 mongoose
-  .connect("mongodb://127.0.0.1:27017/userDB", {
+  .connect(`mongodb+srv://Flash7:${password}@cluster0.sk1g6fg.mongodb.net/userDB`, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
